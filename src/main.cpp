@@ -58,6 +58,14 @@ void runSkinDetect(cv::Mat &frame, SkinSegmenter &segSkinHsv, SkinSegmenter &seg
     cv::resize(maskColorHsv, maskColorHsv, cv::Size(320, 240));
     cv::resize(maskColorYcrcb, maskColorYcrcb, cv::Size(320, 240));
 
+    // Label
+    cv::putText(frame, "Original", cv::Point(20, 30),
+            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
+    cv::putText(maskColorHsv, "MaskHSV", cv::Point(20, 30),
+            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
+    cv::putText(maskColorYcrcb, "MaskYCrCb", cv::Point(20, 30),
+            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
+
     cv::Mat combinedHsv;
     cv::hconcat(frame, maskColorHsv, combinedHsv);  // Combine side by side
     cv::hconcat(combinedHsv, maskColorYcrcb, output);  // Combine side by side
@@ -86,12 +94,15 @@ int main(int argc, char** argv) {
     // MLClassifier classifier("");
 
     while (true) {
+        // FPS count
+        auto lastTime = std::chrono::high_resolution_clock::now();
+        float fps = 0.0f;
+
         cv::Mat frame, output;
         cap >> frame;
         if (frame.empty()) break;
         if (mode == "skin") {
             runSkinDetect(frame, skinSegmenterHSV, skinSegmenterYCrCb, output);
-            cv::imshow("Skin Detection", output);
         } else if (mode == "contour") {
             // TODO
             // skinSegmenter.segment(frame, mask);
@@ -108,6 +119,18 @@ int main(int argc, char** argv) {
             // drawLabel(output, result, {10, 30});
             // cv::imshow("ML Output", output);
         }
+
+        // FPS label in top-left corner
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float delta = std::chrono::duration<float>(currentTime - lastTime).count();
+        fps = 1.0f / delta;
+        lastTime = currentTime;
+
+        std::string fpsText = "FPS: " + std::to_string(int(fps));
+        cv::putText(output, fpsText, cv::Point(20, output.rows - 20),
+        cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 0, 0), 0.5);
+
+        cv::imshow(mode, output);
 
         if (cv::waitKey(1) == 27) break;  // ESC
     }
