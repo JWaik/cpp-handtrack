@@ -1,0 +1,14 @@
+# Ignore build files
+build/
+*.o
+*.out
+*.exe
+*.log
+
+# Ignore IDE files
+.vscode/
+*.swp
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
