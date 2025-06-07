@@ -3,5 +3,5 @@
 
 class ContourAnalyzer {
 public:
-    void analyze(const cv::Mat& binaryMask, cv::Mat& output);
+    void analyzeHandContour(const cv::Mat& mask, cv::Mat& output);
 };
