@@ -33,47 +33,29 @@ void setupTrackbarsYCrCb() {
     cv::createTrackbar("Max Cb", "ControlsYCrCb", &maxCb, 255);
 }
 
-void initSkinDetect() {
-    setupTrackbarsHSV();
-    setupTrackbarsYCrCb();
+void initSkinDetect(ColorSpace colorSpace) {
+    if (colorSpace == ColorSpace::YCrCb) {
+        setupTrackbarsYCrCb();
+    } else {
+        setupTrackbarsHSV();
+    }
 }
 
-void runSkinDetect(cv::Mat &frame, SkinSegmenter &segSkinHsv, SkinSegmenter &segSkinYcrcb, cv::Mat &output) {
-    cv::Mat mask_hsv, mask_ycrcb;
+void runSkinDetect(cv::Mat &frame, SkinSegmenter &segSkin, ColorSpace colorSpace, cv::Mat &output) {
+    ThresholdRange tr;
+    if (colorSpace == ColorSpace::HSV) {
+        tr = {minH, minS, minV, maxH, maxS, maxV};
+    } else {
+        tr = {minY, minCr, minCb, maxY, maxCr, maxCb};
+    }
 
-    ThresholdRange trHSV, trYCrCb;
-    trHSV = {minH, minS, minV, maxH, maxS, maxV};
-    trYCrCb = {minY, minCr, minCb, maxY, maxCr, maxCb};
-
-    segSkinHsv.setThresholds(trHSV);
-    segSkinHsv.segment(frame, mask_hsv);
-    segSkinYcrcb.setThresholds(trYCrCb);
-    segSkinYcrcb.segment(frame, mask_ycrcb);
-
-    cv::Mat maskColorHsv, maskColorYcrcb;
-    cv::cvtColor(mask_hsv, maskColorHsv, cv::COLOR_GRAY2BGR);
-    cv::cvtColor(mask_ycrcb, maskColorYcrcb, cv::COLOR_GRAY2BGR);
-
-    cv::resize(frame, frame, cv::Size(320, 240));
-    cv::resize(maskColorHsv, maskColorHsv, cv::Size(320, 240));
-    cv::resize(maskColorYcrcb, maskColorYcrcb, cv::Size(320, 240));
-
-    // Label
-    cv::putText(frame, "Original", cv::Point(20, 30),
-            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
-    cv::putText(maskColorHsv, "MaskHSV", cv::Point(20, 30),
-            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
-    cv::putText(maskColorYcrcb, "MaskYCrCb", cv::Point(20, 30),
-            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
-
-    cv::Mat combinedHsv;
-    cv::hconcat(frame, maskColorHsv, combinedHsv);  // Combine side by side
-    cv::hconcat(combinedHsv, maskColorYcrcb, output);  // Combine side by side
-
+    segSkin.setThresholds(tr);
+    segSkin.segment(frame, output);
 }
 
 int main(int argc, char** argv) {
     std::string mode = argc > 1 ? argv[1] : "skin";
+    std::string color_mode = argc > 2 ? argv[2] : "hsv";
 
     cv::VideoCapture cap(0);
     if (!cap.isOpened()) {
@@ -81,13 +63,16 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    // init
-    if (mode == "skin") {
-        initSkinDetect();
+    // init skin detect
+    ColorSpace color_space = ColorSpace::HSV;
+    if (mode == "skin" || mode == "contour") {
+        if (color_mode == "ycrcb") {
+            color_space = ColorSpace::YCrCb;
+        }
+        initSkinDetect(color_space);
     }
 
-    SkinSegmenter skinSegmenterHSV(ColorSpace::HSV);
-    SkinSegmenter skinSegmenterYCrCb(ColorSpace::YCrCb);
+    SkinSegmenter skinSegmenter(color_space);
     // TODO
     // ContourAnalyzer contourAnalyzer;
     // MediaPipeDetector mediaPipeDetector;
@@ -102,7 +87,7 @@ int main(int argc, char** argv) {
         cap >> frame;
         if (frame.empty()) break;
         if (mode == "skin") {
-            runSkinDetect(frame, skinSegmenterHSV, skinSegmenterYCrCb, output);
+            runSkinDetect(frame, skinSegmenter, color_space, output);
         } else if (mode == "contour") {
             // TODO
             // skinSegmenter.segment(frame, mask);
@@ -127,10 +112,23 @@ int main(int argc, char** argv) {
         lastTime = currentTime;
 
         std::string fpsText = "FPS: " + std::to_string(int(fps));
-        cv::putText(output, fpsText, cv::Point(20, output.rows - 20),
-        cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 0, 0), 0.5);
+        cv::putText(frame, fpsText, cv::Point(20, output.rows - 20),
+        cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
 
-        cv::imshow(mode, output);
+        // Resize, label, and combine frame
+        cv::Mat maskColor;
+        cv::cvtColor(output, maskColor, cv::COLOR_GRAY2BGR);
+        cv::resize(frame, frame, cv::Size(640, 480));
+        cv::resize(maskColor, maskColor, cv::Size(640, 480));
+
+        cv::putText(frame, "Original", cv::Point(20, 30),
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
+        cv::putText(maskColor, (color_space == ColorSpace::YCrCb) ? "YCrCb" : "HSV", cv::Point(20, 30),
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
+
+        cv::Mat combined;
+        cv::hconcat(frame, maskColor, combined);
+        cv::imshow("Output", combined);
 
         if (cv::waitKey(1) == 27) break;  // ESC
     }
