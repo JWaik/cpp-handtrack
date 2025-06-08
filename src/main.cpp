@@ -4,6 +4,7 @@
 #include "MediaPipeDetector.hpp"
 #include "MLClassifier.hpp"
 #include "Utils.hpp"
+#include "cxxopts.hpp"
 
 // HSV thresholds
 int minH = 0, minS = 30, minV = 60;
@@ -53,11 +54,48 @@ void runSkinDetect(cv::Mat &frame, SkinSegmenter &segSkin, ColorSpace colorSpace
     segSkin.segment(frame, output);
 }
 
-int main(int argc, char** argv) {
-    std::string mode = argc > 1 ? argv[1] : "skin";
-    std::string color_mode = argc > 2 ? argv[2] : "hsv";
+bool arg_parser(int argc, char** argv, std::string &video, std::string &mode, std::string &color, std::string &modelPath, bool &debug) {
+    // TODO: Add try-catch exception
+    cxxopts::Options options("cpp_handtrack", "Hand Detection Tool (OpenCV/MediaPipe/ML)");
+    options.add_options()
+        ("m,mode", "Detection type: skin, contour, mediapipe, ml",
+            cxxopts::value<std::string>()->default_value("skin"))
+        ("c,color", "Detection type: hsv, ycrcb",
+            cxxopts::value<std::string>()->default_value("hsv"))
+        ("v,video", "Video source: camera index (e.g. 0), file path, or IP stream",
+            cxxopts::value<std::string>()->default_value("0"))
+        ("model", "Path to ML model (for ML mode)",
+            cxxopts::value<std::string>()->default_value(""))
+        ("debug", "Enable debug UI (window overlays, logging)",
+            cxxopts::value<bool>()->default_value("false"))
+        ("h,help", "Print usage");
+    auto result = options.parse(argc, argv);
 
-    cv::VideoCapture cap(0);
+    if (result.count("help")) {
+        std::cout << options.help() << std::endl;
+        return true;
+    }
+
+    // Parse all values
+    video = result["video"].as<std::string>();
+    mode = result["mode"].as<std::string>();
+    color = result["color"].as<std::string>();
+    modelPath = result["model"].as<std::string>();
+    debug = result["debug"].as<bool>();
+    return true;
+}
+
+
+int main(int argc, char** argv) {
+
+    // Argument parser
+    std::string video, mode, color, modelPath;
+    bool debug;
+    if (!arg_parser(argc, argv, video, mode, color, modelPath, debug)) {
+        return 1;
+    }
+
+    cv::VideoCapture cap(std::stoi(video));
     if (!cap.isOpened()) {
         std::cerr << "Camera not accessible\n";
         return -1;
@@ -66,7 +104,7 @@ int main(int argc, char** argv) {
     // init skin detect
     ColorSpace color_space = ColorSpace::HSV;
     if (mode == "skin" || mode == "contour") {
-        if (color_mode == "ycrcb") {
+        if (color == "ycrcb") {
             color_space = ColorSpace::YCrCb;
         }
         initSkinDetect(color_space);
