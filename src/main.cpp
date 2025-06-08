@@ -14,6 +14,12 @@ int maxH = 20, maxS = 150, maxV = 255;
 int minY = 0, minCr = 133, minCb = 77;
 int maxY = 255, maxCr = 173, maxCb = 127;
 
+// Finger-cout tuning
+int angleThreshold = 80;
+int depthThreshold = 20;
+int startRatioSlider = 30;  // Represents 0.30
+int farRatioSlider = 20;    // Represents 0.20
+
 void setupTrackbarsHSV() {
     cv::namedWindow("ControlsHSV", cv::WINDOW_AUTOSIZE);
     cv::createTrackbar("Min H", "ControlsHSV", &minH, 179);
@@ -22,6 +28,10 @@ void setupTrackbarsHSV() {
     cv::createTrackbar("Max S", "ControlsHSV", &maxS, 255);
     cv::createTrackbar("Min V", "ControlsHSV", &minV, 255);
     cv::createTrackbar("Max V", "ControlsHSV", &maxV, 255);
+    cv::createTrackbar("Angle <", "ControlsHSV", &angleThreshold, 180);
+    cv::createTrackbar("Depth >", "ControlsHSV", &depthThreshold, 20);
+    cv::createTrackbar("Start Ratio x100", "ControlsHSV", &startRatioSlider, 100);
+    cv::createTrackbar("Far Ratio x100", "ControlsHSV", &farRatioSlider, 100);
 }
 
 void setupTrackbarsYCrCb() {
@@ -32,6 +42,10 @@ void setupTrackbarsYCrCb() {
     cv::createTrackbar("Max Cr", "ControlsYCrCb", &maxCr, 255);
     cv::createTrackbar("Min Cb", "ControlsYCrCb", &minCb, 255);
     cv::createTrackbar("Max Cb", "ControlsYCrCb", &maxCb, 255);
+    cv::createTrackbar("Angle <", "ControlsYCrCb", &angleThreshold, 180);
+    cv::createTrackbar("Depth >", "ControlsYCrCb", &depthThreshold, 20);
+    cv::createTrackbar("Start Ratio x100", "ControlsYCrCb", &startRatioSlider, 100);
+    cv::createTrackbar("Far Ratio x100", "ControlsYCrCb", &farRatioSlider, 100);
 }
 
 void initSkinDetect(ColorSpace colorSpace) {
@@ -133,7 +147,7 @@ int main(int argc, char** argv) {
             cv::morphologyEx(output, morph, cv::MORPH_OPEN, cv::Mat(), cv::Point(-1,-1), 1);
 
             // Draw on original frame
-            contourAnalyzer.analyzeHandContour(morph, frame);
+            contourAnalyzer.analyzeHandContour(morph, frame, angleThreshold, depthThreshold, startRatioSlider*0.01f, farRatioSlider*0.01f);
         } else if (mode == "mediapipe") {
             // TODO
             // mediaPipeDetector.detect(frame, output);

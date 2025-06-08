@@ -1,7 +1,7 @@
 #include "ContourAnalyzer.hpp"
 
 
-void ContourAnalyzer::analyzeHandContour(const cv::Mat& mask, cv::Mat& output) {
+void ContourAnalyzer::analyzeHandContour(const cv::Mat& mask, cv::Mat& output, int angleTres, int depthTres, float startRatio, float farRatio) {
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(mask.clone(), contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
@@ -35,6 +35,12 @@ void ContourAnalyzer::analyzeHandContour(const cv::Mat& mask, cv::Mat& output) {
         std::vector<cv::Vec4i> defects;
         cv::convexityDefects(handContour, hullIndices, defects);
 
+        // Calculate hand center and palm radius
+        cv::Point2f center;
+        float palmRadius;
+        cv::minEnclosingCircle(handContour, center, palmRadius);
+        cv::circle(output, center, (int)palmRadius, cv::Scalar(255, 255, 0), 1);  // Draw palm circle
+
         int fingerCount = 0;
         for (const auto& d : defects) {
             cv::Point ptStart = handContour[d[0]];
@@ -47,10 +53,14 @@ void ContourAnalyzer::analyzeHandContour(const cv::Mat& mask, cv::Mat& output) {
             double b = cv::norm(ptStart - ptFar);
             double c = cv::norm(ptEnd   - ptFar);
             double angle = acos((b*b + c*c - a*a) / (2*b*c)) * 180 / CV_PI;
-
-            if (angle < 80 && depth > 10) {
-                fingerCount++;
-                cv::circle(output, ptFar, 5, cv::Scalar(255, 0, 0), -1); // mark defect
+            if (angle < angleTres && depth > depthTres) {
+                // Check distances from start/far/end to hand center
+                double dStart = cv::norm(cv::Point2f(ptStart) - center);
+                double dFar   = cv::norm(cv::Point2f(ptFar) - center);
+                if (dStart > startRatio * palmRadius && dFar > farRatio * palmRadius) {
+                    fingerCount++;
+                    cv::circle(output, ptFar, 5, cv::Scalar(255, 0, 0), -1);
+                }
             }
         }
 
