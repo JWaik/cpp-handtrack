@@ -162,8 +162,6 @@ int main(int argc, char** argv) {
         cv::resize(frame, frame, cv::Size(640, 480));
         cv::resize(maskColor, maskColor, cv::Size(640, 480));
 
-        cv::putText(frame, "Original", cv::Point(20, 30),
-                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
         cv::putText(maskColor, (color_space == ColorSpace::YCrCb) ? "YCrCb" : "HSV", cv::Point(20, 30),
                 cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 0.5);
 
