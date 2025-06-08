@@ -73,8 +73,7 @@ int main(int argc, char** argv) {
     }
 
     SkinSegmenter skinSegmenter(color_space);
-    // TODO
-    // ContourAnalyzer contourAnalyzer;
+    ContourAnalyzer contourAnalyzer;
     // MediaPipeDetector mediaPipeDetector;
     // MLClassifier classifier("");
 
@@ -89,10 +88,14 @@ int main(int argc, char** argv) {
         if (mode == "skin") {
             runSkinDetect(frame, skinSegmenter, color_space, output);
         } else if (mode == "contour") {
-            // TODO
-            // skinSegmenter.segment(frame, mask);
-            // contourAnalyzer.analyze(mask, output);
-            // cv::imshow("Contour Output", output);
+            runSkinDetect(frame, skinSegmenter, color_space, output);
+
+            // Post-processing
+            cv::Mat morph;
+            cv::morphologyEx(output, morph, cv::MORPH_OPEN, cv::Mat(), cv::Point(-1,-1), 1);
+
+            // Draw on original frame
+            contourAnalyzer.analyzeHandContour(morph, frame);
         } else if (mode == "mediapipe") {
             // TODO
             // mediaPipeDetector.detect(frame, output);
